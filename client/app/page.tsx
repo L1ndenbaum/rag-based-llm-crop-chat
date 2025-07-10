@@ -12,6 +12,7 @@ import { ConversationList } from "@/components/conversation-list"
 import { ImageUpload } from "@/components/image-upload"
 import { AuthGuard } from "@/components/auth-guard"
 import { UserMenu } from "@/components/user-menu"
+import { DragDropZone } from "@/components/drag-drop-zone"
 
 interface Message {
   role: "user" | "assistant"
@@ -61,11 +62,19 @@ export default function ChatbotPage() {
     const storedUsername = localStorage.getItem("username")
     if (storedUsername) {
       setUsername(storedUsername)
+      // 在设置用户名后立即加载对话列表
+      loadConversations()
     }
-    loadConversations(storedUsername)
   }, [])
 
-  const loadConversations = async (username: string|null) => {
+  // 添加一个新的 useEffect 来监听 username 变化
+  useEffect(() => {
+    if (username) {
+      loadConversations()
+    }
+  }, [username])
+
+  const loadConversations = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/conversations/list/${username}`)
       const data = await response.json()
@@ -77,9 +86,35 @@ export default function ChatbotPage() {
 
   const loadConversation = async (conversationId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}`)
+      const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/history?username=${username}`)
       const data = await response.json()
-      setMessages(data.conversation.messages || [])
+
+      // 将后端返回的 query/answer 格式转换为前端的 Message 格式
+      const historyMessages: Message[] = []
+
+      if (Array.isArray(data)) {
+        data.forEach((item) => {
+          // 添加用户消息
+          if (item.query) {
+            historyMessages.push({
+              role: "user",
+              content: item.query,
+              timestamp: new Date().toISOString(), // 如果后端有时间戳，可以使用实际时间
+            })
+          }
+
+          // 添加AI回复
+          if (item.answer) {
+            historyMessages.push({
+              role: "assistant",
+              content: item.answer,
+              timestamp: new Date().toISOString(), // 如果后端有时间戳，可以使用实际时间
+            })
+          }
+        })
+      }
+
+      setMessages(historyMessages)
       setCurrentConversationId(conversationId)
 
       // 从对话列表中找到对话名称
@@ -92,7 +127,7 @@ export default function ChatbotPage() {
 
   const deleteConversation = async (conversationId: string) => {
     try {
-      await fetch(`${API_BASE_URL}/api/conversations/${conversationId}`, {
+      await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/delete?username=${username}`, {
         method: "DELETE",
       })
       setConversations((prev) => prev.filter((conv) => conv.id !== conversationId))
@@ -121,6 +156,38 @@ export default function ChatbotPage() {
     }))
 
     setUploadedFiles((prev) => [...prev, ...newFiles])
+  }
+
+  // 处理拖拽上传的文件
+  const handleDragDropUpload = async (files: File[]) => {
+    if (files.length === 0) return
+
+    try {
+      // 创建FormData并上传文件
+      const formData = new FormData()
+      files.forEach((file) => {
+        formData.append("files", file)
+      })
+
+      const response = await fetch(`${API_BASE_URL}/api/file/upload`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      const fileIds = result.file_ids || []
+
+      // 调用现有的文件上传处理函数
+      handleFileUpload(files, fileIds)
+    } catch (error) {
+      console.error("Drag drop upload error:", error)
+      // 上传失败时传递空的fileIds数组
+      handleFileUpload(files, [])
+    }
   }
 
   const removeFile = (index: number) => {
@@ -243,15 +310,27 @@ export default function ChatbotPage() {
           URL.revokeObjectURL(file.preview)
         })
 
-        await loadConversations(username)
+        await loadConversations()
 
+        // 如果是新对话，可能需要更新当前对话信息
         if (!currentConversationId) {
-          const updatedConversations = await fetch(`${API_BASE_URL}/api/conversations`).then((r) => r.json())
-          if (updatedConversations.conversations && updatedConversations.conversations.length > 0) {
-            const latestConv = updatedConversations.conversations[0]
+          // 重新获取对话列表，找到新创建的对话
+          const updatedResponse = await fetch(`${API_BASE_URL}/api/conversations/list/${username}`)
+          const updatedData = await updatedResponse.json()
+          const updatedConversations = updatedData.conversations || []
+
+          // 更新对话列表
+          setConversations(updatedConversations)
+
+          // 找到最新的对话（通常是第一个，因为按时间排序）
+          if (updatedConversations.length > 0) {
+            const latestConv = updatedConversations[0]
             setCurrentConversationId(latestConv.id)
             setCurrentConversationName(latestConv.name)
           }
+        } else {
+          // 如果是现有对话，只需要刷新对话列表，不改变当前对话ID
+          await loadConversations()
         }
       } catch (streamError) {
         if (streamError instanceof Error && streamError.name === "AbortError") {
@@ -310,127 +389,130 @@ export default function ChatbotPage() {
 
   return (
     <AuthGuard>
-      <div className="flex h-screen bg-gray-50">
-        {/* 侧边栏 */}
-        {showSidebar && (
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-            <div className="p-4 border-b border-gray-200">
-              <Button
-                onClick={startNewConversation}
-                className="w-full justify-start gap-2 bg-transparent"
-                variant="outline"
-              >
-                <Plus className="w-4 h-4" />
-                新建对话
-              </Button>
-            </div>
-
-            <ConversationList
-              conversations={conversations}
-              currentConversationId={currentConversationId}
-              onSelectConversation={loadConversation}
-              onDeleteConversation={deleteConversation}
-            />
-          </div>
-        )}
-
-        {/* 主聊天区域 */}
-        <div className="flex-1 flex flex-col">
-          {/* 头部 */}
-          <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
-                <MessageSquare className="w-4 h-4" />
-              </Button>
-              <h1 className="text-lg font-semibold">{currentConversationName || "AI 助手"}</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              {isLoading && (
-                <Button variant="outline" size="sm" onClick={stopGeneration}>
-                  停止生成
-                </Button>
-              )}
-              <UserMenu />
-            </div>
-          </div>
-
-          {/* 消息区域 */}
-          <ScrollArea className="flex-1 p-4">
-            <div className="max-w-4xl mx-auto space-y-4">
-              {messages.length === 0 ? (
-                <div className="text-center text-gray-500 mt-20">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg mb-2">开始与玉米知识问答助手对话</p>
-                  <p className="text-sm">发送消息开始聊天😀，支持 Markdown 格式、思考过程展示和图片上传</p>
-                </div>
-              ) : (
-                messages.map((message, index) => (
-                  <MessageBubble key={index} message={message} isLoading={message.isStreaming} />
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-
-          {/* 输入区域 */}
-          <div className="bg-white border-t border-gray-200 p-4">
-            <div className="max-w-4xl mx-auto">
-              {/* 文件预览 */}
-              {uploadedFiles.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {uploadedFiles.map((uploadedFile, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={uploadedFile.preview || "/placeholder.svg"}
-                        alt={`Upload ${index + 1}`}
-                        className="w-16 h-16 object-cover rounded-lg border"
-                      />
-                      {!uploadedFile.fileId && (
-                        <div className="absolute inset-0 bg-red-500 bg-opacity-20 rounded-lg flex items-center justify-center">
-                          <span className="text-xs text-red-600 font-medium">上传失败</span>
-                        </div>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeFile(index)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-end gap-2">
-                <div className="flex-1 relative">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={isLoading ? "AI正在回复中... 按Enter停止" : "输入消息..."}
-                    className="pr-20 min-h-[44px] resize-none"
-                    disabled={false}
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <ImageUpload onUpload={handleFileUpload} disabled={isLoading} />
-                  </div>
-                </div>
+      <DragDropZone onFilesDropped={handleDragDropUpload} disabled={isLoading}>
+        <div className="flex h-screen bg-gray-50">
+          {/* 侧边栏 */}
+          {showSidebar && (
+            <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+              <div className="p-4 border-b border-gray-200">
                 <Button
-                  onClick={isLoading ? stopGeneration : sendMessage}
-                  disabled={!isLoading && !input.trim() && uploadedFiles.length === 0}
-                  size="sm"
-                  className="h-[44px] px-4"
-                  variant={isLoading ? "destructive" : "default"}
+                  onClick={startNewConversation}
+                  className="w-full justify-start gap-2 bg-transparent"
+                  variant="outline"
                 >
-                  {isLoading ? "停止" : <Send className="w-4 h-4" />}
+                  <Plus className="w-4 h-4" />
+                  新建对话
                 </Button>
+              </div>
+
+              <ConversationList
+                conversations={conversations}
+                currentConversationId={currentConversationId}
+                onSelectConversation={loadConversation}
+                onDeleteConversation={deleteConversation}
+              />
+            </div>
+          )}
+
+          {/* 主聊天区域 */}
+          <div className="flex-1 flex flex-col">
+            {/* 头部 */}
+            <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
+                  <MessageSquare className="w-4 h-4" />
+                </Button>
+                <h1 className="text-lg font-semibold">{currentConversationName || "AI 助手"}</h1>
+              </div>
+              <div className="flex items-center gap-2">
+                {isLoading && (
+                  <Button variant="outline" size="sm" onClick={stopGeneration}>
+                    停止生成
+                  </Button>
+                )}
+                <UserMenu />
+              </div>
+            </div>
+
+            {/* 消息区域 */}
+            <ScrollArea className="flex-1 p-4">
+              <div className="max-w-4xl mx-auto space-y-4">
+                {messages.length === 0 ? (
+                  <div className="text-center text-gray-500 mt-20">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg mb-2">开始与 AI 助手对话</p>
+                    <p className="text-sm">发送消息开始聊天，支持 Markdown 格式、思考过程展示和图片上传</p>
+                    <p className="text-xs text-gray-400 mt-2">💡 提示：可以直接拖拽图片到窗口中上传</p>
+                  </div>
+                ) : (
+                  messages.map((message, index) => (
+                    <MessageBubble key={index} message={message} isLoading={message.isStreaming} />
+                  ))
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            {/* 输入区域 */}
+            <div className="bg-white border-t border-gray-200 p-4">
+              <div className="max-w-4xl mx-auto">
+                {/* 文件预览 */}
+                {uploadedFiles.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {uploadedFiles.map((uploadedFile, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={uploadedFile.preview || "/placeholder.svg"}
+                          alt={`Upload ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded-lg border"
+                        />
+                        {!uploadedFile.fileId && (
+                          <div className="absolute inset-0 bg-red-500 bg-opacity-20 rounded-lg flex items-center justify-center">
+                            <span className="text-xs text-red-600 font-medium">上传失败</span>
+                          </div>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 w-5 h-5 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => removeFile(index)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder={isLoading ? "AI正在回复中... 按Enter停止" : "输入消息..."}
+                      className="pr-20 min-h-[44px] resize-none"
+                      disabled={false}
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      <ImageUpload onUpload={handleFileUpload} disabled={isLoading} />
+                    </div>
+                  </div>
+                  <Button
+                    onClick={isLoading ? stopGeneration : sendMessage}
+                    disabled={!isLoading && !input.trim() && uploadedFiles.length === 0}
+                    size="sm"
+                    className="h-[44px] px-4"
+                    variant={isLoading ? "destructive" : "default"}
+                  >
+                    {isLoading ? "停止" : <Send className="w-4 h-4" />}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </DragDropZone>
     </AuthGuard>
   )
 }
