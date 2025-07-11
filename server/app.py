@@ -23,6 +23,10 @@ logging.basicConfig(level=logging.INFO)
 def next_static(path):
     return send_from_directory('./static/out/_next/static', path)
 
+@app.route('/images/<string:image_name>')
+def serve_image(image_name):
+    return send_from_directory('./static/out/images', image_name)
+
 @app.route('/')
 def index():
     return send_from_directory('./static/out', 'index.html')

@@ -1,20 +1,23 @@
-import type { Metadata } from 'next'
-import './globals.css'
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: 'CropChat',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: "AI Chatbot",
+  description: "A modern chatbot interface with AI assistance",
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="zh-CN">
+      <body className={inter.className}>{children}</body>
     </html>
   )
 }

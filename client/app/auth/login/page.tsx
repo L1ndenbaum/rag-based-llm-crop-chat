@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, MessageSquare } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import Link from "next/link"
 
 export default function LoginPage() {
@@ -65,9 +65,15 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <MessageSquare className="mx-auto h-12 w-12 text-blue-600" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">登录到玉米知识问答助手</h2>
-          <p className="mt-2 text-sm text-gray-600">开始与玉米知识问答助手的智能对话</p>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-yellow-100 to-green-100 p-2">
+            <img
+              src="/images/corn-avatar.jpeg"
+              alt="玉米问答助手"
+              className="w-full h-full object-cover rounded-full"
+            />
+          </div>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">登录到玉米问答助手</h2>
+          <p className="mt-2 text-sm text-gray-600">开始与玉米问答助手的智能对话</p>
         </div>
 
         <Card>

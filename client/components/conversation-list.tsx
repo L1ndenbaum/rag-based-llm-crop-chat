@@ -61,8 +61,10 @@ export function ConversationList({
           conversations.map((conversation) => (
             <div
               key={conversation.id}
-              className={`group relative rounded-lg p-3 cursor-pointer transition-colors ${
-                currentConversationId === conversation.id ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50"
+              className={`group relative rounded-lg p-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                currentConversationId === conversation.id
+                  ? "bg-blue-50 border border-blue-200 shadow-sm"
+                  : "hover:bg-gray-50 hover:shadow-sm"
               }`}
               onMouseEnter={() => setHoveredId(conversation.id)}
               onMouseLeave={() => setHoveredId(null)}
@@ -87,7 +89,7 @@ export function ConversationList({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-auto ml-2"
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 p-1 h-auto ml-2 hover:bg-red-50 active:scale-90"
                     onClick={(e) => {
                       e.stopPropagation()
                       onDeleteConversation(conversation.id)

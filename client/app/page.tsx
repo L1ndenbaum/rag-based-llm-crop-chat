@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { MessageSquare, Send, Plus, X } from "lucide-react"
+import { Menu, Send, Plus, X } from "lucide-react"
 import { MessageBubble } from "@/components/message-bubble"
 import { ConversationList } from "@/components/conversation-list"
 import { ImageUpload } from "@/components/image-upload"
@@ -19,6 +19,7 @@ interface Message {
   content: string
   timestamp: string
   isStreaming?: boolean
+  images?: string[] // 图片URL数组
 }
 
 interface Conversation {
@@ -89,17 +90,28 @@ export default function ChatbotPage() {
       const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/history?username=${username}`)
       const data = await response.json()
 
-      // 将后端返回的 query/answer 格式转换为前端的 Message 格式
+      // 将后端返回的数据转换为前端的 Message 格式
       const historyMessages: Message[] = []
 
       if (Array.isArray(data)) {
         data.forEach((item) => {
           // 添加用户消息
           if (item.query) {
+            // 提取用户消息中的图片URLs
+            const userImages: string[] = []
+            if (item.message_files && Array.isArray(item.message_files)) {
+              item.message_files.forEach((file: any) => {
+                if (file.type === "image" && file.url && file.belongs_to === "user") {
+                  userImages.push(file.url)
+                }
+              })
+            }
+
             historyMessages.push({
               role: "user",
               content: item.query,
-              timestamp: new Date().toISOString(), // 如果后端有时间戳，可以使用实际时间
+              timestamp: new Date().toISOString(),
+              images: userImages.length > 0 ? userImages : undefined,
             })
           }
 
@@ -108,7 +120,7 @@ export default function ChatbotPage() {
             historyMessages.push({
               role: "assistant",
               content: item.answer,
-              timestamp: new Date().toISOString(), // 如果后端有时间戳，可以使用实际时间
+              timestamp: new Date().toISOString(),
             })
           }
         })
@@ -202,10 +214,13 @@ export default function ChatbotPage() {
   const sendMessage = async () => {
     if (!input.trim() && uploadedFiles.length === 0) return
 
+    // 创建用户消息，包含上传的图片预览URLs
+    const userImages = uploadedFiles.map((file) => file.preview)
     const userMessage: Message = {
       role: "user",
       content: input,
       timestamp: new Date().toISOString(),
+      images: userImages.length > 0 ? userImages : undefined,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -392,41 +407,53 @@ export default function ChatbotPage() {
       <DragDropZone onFilesDropped={handleDragDropUpload} disabled={isLoading}>
         <div className="flex h-screen bg-gray-50">
           {/* 侧边栏 */}
-          {showSidebar && (
-            <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-              <div className="p-4 border-b border-gray-200">
-                <Button
-                  onClick={startNewConversation}
-                  className="w-full justify-start gap-2 bg-transparent"
-                  variant="outline"
-                >
-                  <Plus className="w-4 h-4" />
-                  新建对话
-                </Button>
-              </div>
-
-              <ConversationList
-                conversations={conversations}
-                currentConversationId={currentConversationId}
-                onSelectConversation={loadConversation}
-                onDeleteConversation={deleteConversation}
-              />
+          <div
+            className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out ${
+              showSidebar ? "w-80 opacity-100" : "w-0 opacity-0 overflow-hidden"
+            }`}
+          >
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <Button
+                onClick={startNewConversation}
+                className="w-full justify-start gap-2 bg-transparent hover:bg-blue-50 active:scale-95 transition-all duration-150"
+                variant="outline"
+              >
+                <Plus className="w-4 h-4" />
+                新建对话
+              </Button>
             </div>
-          )}
+
+            <ConversationList
+              conversations={conversations}
+              currentConversationId={currentConversationId}
+              onSelectConversation={loadConversation}
+              onDeleteConversation={deleteConversation}
+            />
+          </div>
 
           {/* 主聊天区域 */}
           <div className="flex-1 flex flex-col">
             {/* 头部 */}
             <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={() => setShowSidebar(!showSidebar)}>
-                  <MessageSquare className="w-4 h-4" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  className="hover:bg-gray-100 active:scale-95 transition-all duration-150"
+                >
+                  <Menu className="w-4 h-4" />
                 </Button>
-                <h1 className="text-lg font-semibold">{currentConversationName || "AI 助手"}</h1>
+                <h1 className="text-lg font-semibold">{currentConversationName || "玉米智能问答助手"}</h1>
               </div>
               <div className="flex items-center gap-2">
                 {isLoading && (
-                  <Button variant="outline" size="sm" onClick={stopGeneration}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={stopGeneration}
+                    className="hover:bg-red-50 hover:border-red-200 active:scale-95 transition-all duration-150 bg-transparent"
+                  >
                     停止生成
                   </Button>
                 )}
@@ -439,9 +466,15 @@ export default function ChatbotPage() {
               <div className="max-w-4xl mx-auto space-y-4">
                 {messages.length === 0 ? (
                   <div className="text-center text-gray-500 mt-20">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-lg mb-2">开始与 AI 助手对话</p>
-                    <p className="text-sm">发送消息开始聊天，支持 Markdown 格式、思考过程展示和图片上传</p>
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-yellow-100 to-green-100 p-2">
+                      <img
+                        src="/images/corn-avatar.jpeg"
+                        alt="玉米智能问答助手"
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    </div>
+                    <p className="text-lg mb-2 text-gray-700">我是玉米智能问答助手</p>
+                    <p className="text-sm text-gray-600">有什么可以帮忙的😀？</p>
                     <p className="text-xs text-gray-400 mt-2">💡 提示：可以直接拖拽图片到窗口中上传</p>
                   </div>
                 ) : (
@@ -474,7 +507,7 @@ export default function ChatbotPage() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          className="absolute -top-2 -right-2 w-5 h-5 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute -top-2 -right-2 w-5 h-5 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-90"
                           onClick={() => removeFile(index)}
                         >
                           <X className="w-3 h-3" />
@@ -490,7 +523,7 @@ export default function ChatbotPage() {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder={isLoading ? "AI正在回复中... 按Enter停止" : "输入消息..."}
+                      placeholder={isLoading ? "玉米智能问答助手正在回复中... 按Enter停止" : "输入消息..."}
                       className="pr-20 min-h-[44px] resize-none"
                       disabled={false}
                     />
@@ -502,7 +535,7 @@ export default function ChatbotPage() {
                     onClick={isLoading ? stopGeneration : sendMessage}
                     disabled={!isLoading && !input.trim() && uploadedFiles.length === 0}
                     size="sm"
-                    className="h-[44px] px-4"
+                    className="h-[44px] px-4 active:scale-95 transition-all duration-150"
                     variant={isLoading ? "destructive" : "default"}
                   >
                     {isLoading ? "停止" : <Send className="w-4 h-4" />}

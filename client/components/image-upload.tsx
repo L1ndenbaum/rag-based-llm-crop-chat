@@ -14,7 +14,7 @@ export function ImageUpload({ onUpload, disabled = false }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
@@ -72,13 +72,13 @@ export function ImageUpload({ onUpload, disabled = false }: ImageUploadProps) {
         variant="ghost"
         size="sm"
         onClick={handleClick}
-        className="p-1 h-auto"
+        className="p-2 h-auto hover:bg-blue-50 active:scale-90 transition-all duration-150"
         disabled={disabled || isUploading}
       >
         {isUploading ? (
-          <Loader2 className="w-4 h-4 text-gray-500 animate-spin" />
+          <Loader2 className="w-5 h-5 text-gray-500 animate-spin" />
         ) : (
-          <ImageIcon className="w-4 h-4 text-gray-500" />
+          <ImageIcon className="w-5 h-5 text-gray-500" />
         )}
       </Button>
       <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileChange} className="hidden" />

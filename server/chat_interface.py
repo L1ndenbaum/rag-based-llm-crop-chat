@@ -19,7 +19,6 @@ def chat():
     username = data.get('username')
     conversation_id = data.get('conversation_id')
     file_ids = data.get('file_ids') or None
-    print(conversation_id)
     files = []  
     if file_ids is not None:
         for file_id in file_ids:
@@ -45,6 +44,7 @@ def chat():
                              'timestamp': datetime.now().isoformat()
                             })
     
+    print(conv)
     def generate():
         try:
             resp = dify_client.chat_message(
@@ -90,6 +90,7 @@ def list_conversations(username):
             'updated_at': conversation['updated_at'],
         } for conversation in conversations
     ]
+    print(conversations)
     conversations.sort(key=lambda x: x['created_at'], reverse=True)
     return jsonify({'conversations': conversations, 'total': len(conversations)})
 
@@ -135,7 +136,8 @@ def get_chat_history(conversation_id):
     #print(f"Total messages fetched: {len(history)}")
     all_message_history = [{
                             'query' : message.get('query'),
-                            'answer' : message.get('answer')
+                            'answer' : message.get('answer'),
+                            'message_files': message.get('message_files')
                             } for message in all_message_history]
 
     return jsonify(all_message_history)
