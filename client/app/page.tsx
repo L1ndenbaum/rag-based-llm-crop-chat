@@ -54,9 +54,7 @@ export default function ChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+  useEffect(() => { scrollToBottom() }, [messages])
 
   useEffect(() => {
     // 获取用户名
@@ -110,7 +108,7 @@ export default function ChatbotPage() {
             historyMessages.push({
               role: "user",
               content: item.query,
-              timestamp: new Date().toISOString(),
+              timestamp: item.created_at,
               images: userImages.length > 0 ? userImages : undefined,
             })
           }
@@ -120,7 +118,7 @@ export default function ChatbotPage() {
             historyMessages.push({
               role: "assistant",
               content: item.answer,
-              timestamp: new Date().toISOString(),
+              timestamp: item.created_at,
             })
           }
         })
@@ -285,10 +283,10 @@ export default function ChatbotPage() {
               prev.map((msg, index) =>
                 index === prev.length - 1
                   ? {
-                      ...msg,
-                      content: chunk,
-                      isStreaming: false,
-                    }
+                    ...msg,
+                    content: chunk,
+                    isStreaming: false,
+                  }
                   : msg,
               ),
             )
@@ -301,10 +299,10 @@ export default function ChatbotPage() {
             prev.map((msg, index) =>
               index === prev.length - 1
                 ? {
-                    ...msg,
-                    content: accumulatedContent,
-                    isStreaming: true,
-                  }
+                  ...msg,
+                  content: accumulatedContent,
+                  isStreaming: true,
+                }
                 : msg,
             ),
           )
@@ -314,9 +312,9 @@ export default function ChatbotPage() {
           prev.map((msg, index) =>
             index === prev.length - 1
               ? {
-                  ...msg,
-                  isStreaming: false,
-                }
+                ...msg,
+                isStreaming: false,
+              }
               : msg,
           ),
         )
@@ -356,10 +354,10 @@ export default function ChatbotPage() {
             prev.map((msg, index) =>
               index === prev.length - 1
                 ? {
-                    ...msg,
-                    content: "流式传输出现错误，请重试。",
-                    isStreaming: false,
-                  }
+                  ...msg,
+                  content: "流式传输出现错误，请重试。",
+                  isStreaming: false,
+                }
                 : msg,
             ),
           )
@@ -371,10 +369,10 @@ export default function ChatbotPage() {
         prev.map((msg, index) =>
           index === prev.length - 1
             ? {
-                ...msg,
-                content: "发送消息失败，请检查网络连接后重试。",
-                isStreaming: false,
-              }
+              ...msg,
+              content: "发送消息失败，请检查网络连接后重试。",
+              isStreaming: false,
+            }
             : msg,
         ),
       )
@@ -408,9 +406,8 @@ export default function ChatbotPage() {
         <div className="flex h-screen bg-gray-50">
           {/* 侧边栏 */}
           <div
-            className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out ${
-              showSidebar ? "w-80 opacity-100" : "w-0 opacity-0 overflow-hidden"
-            }`}
+            className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out ${showSidebar ? "w-80 opacity-100" : "w-0 opacity-0 overflow-hidden"
+              }`}
           >
             <div className="p-4 border-b border-gray-200 flex-shrink-0">
               <Button

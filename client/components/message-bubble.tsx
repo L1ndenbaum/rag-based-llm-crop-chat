@@ -1,9 +1,8 @@
 "use client"
 
-import Image from "next/image" // 👈 添加 Image 引入
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card } from "@/components/ui/card"
-import { Bot, User } from "lucide-react"
+import { User } from "lucide-react"
 import { MarkdownRenderer } from "./markdown-renderer"
 import { ThinkingSection } from "./thinking-section"
 
@@ -30,8 +29,18 @@ interface ParsedContent {
 
 export function MessageBubble({ message, isLoading }: MessageBubbleProps) {
   const isUser = message.role === "user"
-  const isAssistant = !isUser
   const isStreaming = message.isStreaming || isLoading
+
+  // 时间格式化函数，兼容Unix时间戳和ISO格式
+  const formatTimestamp = (timestamp: string) => {
+    // 检查是否为Unix时间戳（纯数字字符串）
+    const isUnixTimestamp = /^\d+$/.test(timestamp)
+    const date = isUnixTimestamp
+      ? new Date(Number.parseInt(timestamp) * 1000) // Unix时间戳需要乘以1000
+      : new Date(timestamp) // ISO格式字符串
+
+    return date.toLocaleTimeString()
+  }
 
   // 解析思考部分和正常内容（支持流式解析）
   const parseStreamContent = (content: string): ParsedContent => {
@@ -46,33 +55,40 @@ export function MessageBubble({ message, isLoading }: MessageBubbleProps) {
       const thinkEndIndex = content.indexOf("</think>", currentIndex)
 
       if (!inThinking) {
+        // 当前不在思考模式
         if (thinkStartIndex === -1) {
+          // 没有找到开始标签，剩余都是普通内容
           normalContent += content.slice(currentIndex)
           break
         } else {
+          // 找到开始标签
           normalContent += content.slice(currentIndex, thinkStartIndex)
           if (normalContent.trim()) {
             parts.push({ type: "content", content: normalContent.trim(), isComplete: true })
             normalContent = ""
           }
           inThinking = true
-          currentIndex = thinkStartIndex + "<think>".length
+          currentIndex = thinkStartIndex + 10 // '<Thinking>'.length
         }
       } else {
+        // 当前在思考模式
         if (thinkEndIndex === -1) {
+          // 没有找到结束标签，剩余都是思考内容（可能还在流式输出中）
           thinkingContent += content.slice(currentIndex)
           parts.push({ type: "thinking", content: thinkingContent, isComplete: false })
           break
         } else {
+          // 找到结束标签
           thinkingContent += content.slice(currentIndex, thinkEndIndex)
           parts.push({ type: "thinking", content: thinkingContent, isComplete: true })
           thinkingContent = ""
           inThinking = false
-          currentIndex = thinkEndIndex + "</think>".length
+          currentIndex = thinkEndIndex + 11 // '</Thinking>'.length
         }
       }
     }
 
+    // 处理剩余的普通内容
     if (normalContent.trim()) {
       parts.push({ type: "content", content: normalContent.trim(), isComplete: true })
     }
@@ -86,20 +102,17 @@ export function MessageBubble({ message, isLoading }: MessageBubbleProps) {
 
   return (
     <div
-      className={`flex gap-3 animate-in slide-in-from-bottom-2 duration-300 ${
-        isUser ? "justify-end" : "justify-start"
-      }`}
+      className={`flex gap-3 animate-in slide-in-from-bottom-2 duration-300 ${isUser ? "justify-end" : "justify-start"}`}
     >
-      {isAssistant && (
-        <Avatar className="w-8 h-8 mt-1 ring-2 ring-blue-100">
-          <Image
-            src="/images/corn-avatar.jpeg" // 👈 这就是 AI 头像
-            alt="Assistant Avatar"
-            width={32}
-            height={32}
-            unoptimized
-            className="rounded-full"
-          />
+      {!isUser && (
+        <Avatar className="w-8 h-8 mt-1 ring-2 ring-yellow-100">
+          <AvatarFallback className="bg-gradient-to-br from-yellow-100 to-green-100 p-1">
+            <img
+              src="/images/corn-avatar.jpeg"
+              alt="玉米问答助手"
+              className="w-full h-full object-cover rounded-full"
+            />
+          </AvatarFallback>
         </Avatar>
       )}
 
@@ -111,11 +124,10 @@ export function MessageBubble({ message, isLoading }: MessageBubbleProps) {
             ) : (
               part.content && (
                 <Card
-                  className={`p-4 transition-all duration-200 hover:shadow-md ${
-                    isUser
-                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-600 shadow-lg"
-                      : "bg-white border-gray-200 shadow-sm hover:shadow-md"
-                  } mb-2`}
+                  className={`p-4 transition-all duration-200 hover:shadow-md ${isUser
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-600 shadow-lg"
+                    : "bg-white border-gray-200 shadow-sm hover:shadow-md"
+                    } mb-2`}
                 >
                   {/* 用户消息显示图片 */}
                   {isUser && message.images && message.images.length > 0 && (
@@ -149,17 +161,18 @@ export function MessageBubble({ message, isLoading }: MessageBubbleProps) {
           </div>
         ))}
 
+        {/* 如果没有任何内容但正在流式传输，显示占位符 */}
         {parts.length === 0 && isStreaming && (
           <Card className="p-4 bg-white border-gray-200 shadow-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-4 bg-blue-500 animate-pulse rounded-sm"></div>
-              <span className="text-sm text-gray-500">AI 正在思考...</span>
+              <span className="text-sm text-gray-500">玉米问答助手正在思考...</span>
             </div>
           </Card>
         )}
 
         <div className={`text-xs text-gray-500 mt-2 ${isUser ? "text-right" : "text-left"}`}>
-          {new Date(message.timestamp).toLocaleTimeString()}
+          {formatTimestamp(message.timestamp)}
           {isStreaming && !isUser && <span className="ml-2 text-blue-500 animate-pulse">正在输入...</span>}
         </div>
       </div>

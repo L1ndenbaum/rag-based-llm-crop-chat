@@ -28,7 +28,12 @@ export function ConversationList({
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    // 检查是否为Unix时间戳（纯数字字符串）
+    const isUnixTimestamp = /^\d+$/.test(dateString)
+    const date = isUnixTimestamp
+      ? new Date(Number.parseInt(dateString) * 1000) // Unix时间戳需要乘以1000
+      : new Date(dateString) // ISO格式字符串
+
     const now = new Date()
     const diffTime = Math.abs(now.getTime() - date.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
@@ -40,7 +45,12 @@ export function ConversationList({
   }
 
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
+    // 检查是否为Unix时间戳（纯数字字符串）
+    const isUnixTimestamp = /^\d+$/.test(dateString)
+    const date = isUnixTimestamp
+      ? new Date(Number.parseInt(dateString) * 1000) // Unix时间戳需要乘以1000
+      : new Date(dateString) // ISO格式字符串
+
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
@@ -61,11 +71,10 @@ export function ConversationList({
           conversations.map((conversation) => (
             <div
               key={conversation.id}
-              className={`group relative rounded-lg p-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
-                currentConversationId === conversation.id
-                  ? "bg-blue-50 border border-blue-200 shadow-sm"
-                  : "hover:bg-gray-50 hover:shadow-sm"
-              }`}
+              className={`group relative rounded-lg p-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${currentConversationId === conversation.id
+                ? "bg-blue-50 border border-blue-200 shadow-sm"
+                : "hover:bg-gray-50 hover:shadow-sm"
+                }`}
               onMouseEnter={() => setHoveredId(conversation.id)}
               onMouseLeave={() => setHoveredId(null)}
               onClick={() => onSelectConversation(conversation.id)}

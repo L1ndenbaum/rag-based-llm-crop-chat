@@ -13,38 +13,43 @@ dify_client = DifyClient(api_key=DIFY_API_KEY, base_url=DIFY_BASE_URL)
 
 conversations = {}
 @chat_interface_bp.route('/api/chat', methods=['POST'])
-def chat():
+def chat(): 
     data = request.get_json() or {}
     message = (data.get('message') or '').strip()
     username = data.get('username')
     conversation_id = data.get('conversation_id')
     file_ids = data.get('file_ids') or None
-    files = []  
-    if file_ids is not None:
-        for file_id in file_ids:
-            files.append(
-                            {
-                                'type' : 'image',
-                                'transfer_method' : 'local_file',
-                                'upload_file_id' : file_id
-                            }
-                        )
+    
     if not message:
         return jsonify({'error': '消息内容不能为空'}), 400
 
-    conv = conversations.setdefault(conversation_id, 
-                                    {
-                                        'id': conversation_id,
-                                        'created_at': datetime.now().isoformat(),
-                                        'messages': []
-                                    })
-    conv['messages'].append({
-                             'role': 'user', 
-                             'content': message, 
-                             'timestamp': datetime.now().isoformat()
-                            })
+    files = []
+    if file_ids is not None:
+        for file_id in file_ids:
+            files.append(
+                {
+                    'type' : 'image',
+                    'transfer_method' : 'local_file',
+                    'upload_file_id' : file_id
+                }
+            )
     
-    print(conv)
+    conversation = conversations.setdefault(
+        conversation_id,
+        {
+            'id': conversation_id,
+            'created_at': datetime.now().isoformat(),
+            'messages': []
+        }
+    )
+    conversation['messages'].append(
+        {
+            'role': 'user', 
+            'content': message, 
+            'timestamp': datetime.now().isoformat()
+        }
+    )
+    
     def generate():
         try:
             resp = dify_client.chat_message(
@@ -65,7 +70,7 @@ def chat():
                         yield delta
 
             # 完成后整理 AI 全文
-            conv['messages'].append(
+            conversation['messages'].append(
                 {
                     'role': 'assistant', 
                     'content': buffer, 
@@ -90,9 +95,8 @@ def list_conversations(username):
             'updated_at': conversation['updated_at'],
         } for conversation in conversations
     ]
-    print(conversations)
     conversations.sort(key=lambda x: x['created_at'], reverse=True)
-    return jsonify({'conversations': conversations, 'total': len(conversations)})
+    return jsonify({'conversations': conversations})
 
 @chat_interface_bp.route('/api/conversations/<string:conversation_id>/history', methods=['GET'])
 def get_chat_history(conversation_id):
@@ -133,12 +137,15 @@ def get_chat_history(conversation_id):
         return all_msgs
 
     all_message_history = load_all_history()
-    #print(f"Total messages fetched: {len(history)}")
-    all_message_history = [{
-                            'query' : message.get('query'),
-                            'answer' : message.get('answer'),
-                            'message_files': message.get('message_files')
-                            } for message in all_message_history]
+    all_message_history = [
+        {
+            'query' : message.get('query'),
+            'answer' : message.get('answer'),
+            'message_files': message.get('message_files'),
+            'created_at':  message.get('created_at')
+        } 
+        for message in all_message_history
+    ]
 
     return jsonify(all_message_history)
 
