@@ -10,7 +10,7 @@ from db_config import SQLALCHEMY_DATABASE_URI
 
 STATIC_FOLDER_PATH = "..'/../client/out"
 logger = logging.getLogger(__name__)
-app = Flask(__name__, static_folder='out')
+app = Flask(__name__, static_folder='./static/out')
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.register_blueprint(user_control_interface_bp)
@@ -19,17 +19,13 @@ db.init_app(app)
 CORS(app)
 logging.basicConfig(level=logging.INFO)
 
-@app.route('/_next/static/<path:path>')
-def next_static(path):
-    return send_from_directory('./static/out/_next/static', path)
-
-@app.route('/images/<string:image_name>')
-def serve_image(image_name):
-    return send_from_directory('./static/out/images', image_name)
-
 @app.route('/')
-def index():
+def serve_index():
     return send_from_directory('./static/out', 'index.html')
+
+@app.route('/<path:filename>')
+def serve_static_file(filename):
+    return send_from_directory('./static/out', filename)
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -45,4 +41,4 @@ def not_found(e): return jsonify({'error': '接口不存在'}), 404
 def err(e): return jsonify({'error': '服务器内部错误'}), 500
 
 if __name__ == '__main__':
-    waitress.serve(app, host='0.0.0.0', port=8080)
+    waitress.serve(app, host='0.0.0.0', port=8080, threads=16)

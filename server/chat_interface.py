@@ -61,13 +61,17 @@ def chat():
                 stream=True
             )
             buffer = ""
+            message_id = ""
             for chunk in resp:
                 data = json.loads(chunk.data)
                 if data.get('event') == 'message':
                     delta = data.get("answer")
+                    message_id = data.get('message_id')
                     if delta:
                         buffer += delta
                         yield delta
+                elif data.get('event') == 'message_end':
+                    yield f"[MESSAGE_ID:{message_id}]"
 
             # 完成后整理 AI 全文
             conversation['messages'].append(
@@ -83,6 +87,23 @@ def chat():
     # 返回 chunked 流式响应
     return Response(stream_with_context(generate()),
                     content_type='text/plain; charset=utf-8')
+
+@chat_interface_bp.route('/api/chat/next_suggest/<string:message_id>', methods=['GET'])
+def get_next_problem_suggestion(message_id):
+    username = request.args.get('username')
+    url = DIFY_BASE_URL+f'/messages/{message_id}/suggested'
+    params = {'user': username}
+    try:
+        response = requests.get(url=url,
+                                headers={"Authorization": f"Bearer {DIFY_API_KEY}",
+                                         "Content-Type": 'application/json'},
+                                params=params)
+        response.raise_for_status()
+    except Exception as error:
+        print(error)
+
+    data:List = response.json().get('data')
+    return jsonify(data)
 
 @chat_interface_bp.route('/api/conversations/list/<string:username>', methods=['GET'])
 def list_conversations(username):
@@ -185,4 +206,3 @@ def upload_files():
         print(error)
 
     return jsonify({'file_ids': file_ids})
-

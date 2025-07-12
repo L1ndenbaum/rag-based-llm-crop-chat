@@ -6,8 +6,11 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AI Chatbot",
+  title: "玉米知识问答助手",
   description: "A modern chatbot interface with AI assistance",
+  icons: {
+    icon: "/favicon.ico",
+  },
 }
 
 export default function RootLayout({

@@ -56,15 +56,6 @@ from datetime import datetime
 #     return all_message_history
 
 # print(get_chat_history('3951b250-56cc-48ae-a361-77877c95348c'))
-
-from datetime import datetime, timezone
-
-ts = 1752141634
-dt_utc = datetime.fromtimestamp(ts, timezone.utc)
-print(dt_utc.strftime('%Y-%m-%d'))
-# 输出示例：2025-08-09
-print(datetime.now().isoformat())
-
-a = {'text':2}
-a.setdefault('text', 3)
-print(a)
+print(os.getcwd())
+with open('crop-chat-app/server/requirements.txt', 'r') as f:
+    print(f.readline())

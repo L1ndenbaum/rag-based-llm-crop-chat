@@ -5,18 +5,24 @@ import { Card } from "@/components/ui/card"
 import { User } from "lucide-react"
 import { MarkdownRenderer } from "./markdown-renderer"
 import { ThinkingSection } from "./thinking-section"
+import { SuggestedQuestions } from "./suggested-questions"
 
 interface Message {
   role: "user" | "assistant"
   content: string
   timestamp: string
   isStreaming?: boolean
-  images?: string[] // 添加图片字段
+  images?: string[]
+  messageId?: string // 添加消息ID字段
 }
 
 interface MessageBubbleProps {
   message: Message
   isLoading?: boolean
+  username?: string
+  onQuestionSelect?: (question: string) => void
+  showSuggestions?: boolean
+  isLastMessage?: boolean
 }
 
 interface ParsedContent {
@@ -27,7 +33,14 @@ interface ParsedContent {
   }>
 }
 
-export function MessageBubble({ message, isLoading }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  isLoading,
+  username,
+  onQuestionSelect,
+  showSuggestions = false,
+  isLastMessage = false,
+}: MessageBubbleProps) {
   const isUser = message.role === "user"
   const isStreaming = message.isStreaming || isLoading
 
@@ -100,6 +113,10 @@ export function MessageBubble({ message, isLoading }: MessageBubbleProps) {
     ? { parts: [{ type: "content" as const, content: message.content, isComplete: true }] }
     : parseStreamContent(message.content)
 
+  // 判断是否应该显示推荐问题
+  const shouldShowSuggestions =
+    !isUser && !isStreaming && showSuggestions && isLastMessage && message.messageId && username && onQuestionSelect
+
   return (
     <div
       className={`flex gap-3 animate-in slide-in-from-bottom-2 duration-300 ${isUser ? "justify-end" : "justify-start"}`}
@@ -160,6 +177,16 @@ export function MessageBubble({ message, isLoading }: MessageBubbleProps) {
             )}
           </div>
         ))}
+
+        {/* 推荐问题组件 */}
+        {shouldShowSuggestions && (
+          <SuggestedQuestions
+            messageId={message.messageId!}
+            username={username!}
+            onQuestionSelect={onQuestionSelect!}
+            disabled={isLoading}
+          />
+        )}
 
         {/* 如果没有任何内容但正在流式传输，显示占位符 */}
         {parts.length === 0 && isStreaming && (

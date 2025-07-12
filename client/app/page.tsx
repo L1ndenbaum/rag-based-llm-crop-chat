@@ -20,6 +20,7 @@ interface Message {
   timestamp: string
   isStreaming?: boolean
   images?: string[] // 图片URL数组
+  messageId?: string // 添加消息ID字段
 }
 
 interface Conversation {
@@ -54,7 +55,9 @@ export default function ChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  useEffect(() => { scrollToBottom() }, [messages])
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
   useEffect(() => {
     // 获取用户名
@@ -108,7 +111,7 @@ export default function ChatbotPage() {
             historyMessages.push({
               role: "user",
               content: item.query,
-              timestamp: item.created_at,
+              timestamp: new Date().toISOString(),
               images: userImages.length > 0 ? userImages : undefined,
             })
           }
@@ -118,7 +121,8 @@ export default function ChatbotPage() {
             historyMessages.push({
               role: "assistant",
               content: item.answer,
-              timestamp: item.created_at,
+              timestamp: new Date().toISOString(),
+              messageId: item.id, // 添加消息ID
             })
           }
         })
@@ -209,20 +213,27 @@ export default function ChatbotPage() {
     })
   }
 
-  const sendMessage = async () => {
-    if (!input.trim() && uploadedFiles.length === 0) return
+  // 处理推荐问题选择
+  const handleQuestionSelect = (question: string) => {
+    setInput(question)
+    // 可以选择自动发送或让用户确认
+    // sendMessageWithText(question)
+  }
+
+  // 发送消息的通用函数
+  const sendMessageWithText = async (messageText: string) => {
+    if (!messageText.trim() && uploadedFiles.length === 0) return
 
     // 创建用户消息，包含上传的图片预览URLs
     const userImages = uploadedFiles.map((file) => file.preview)
     const userMessage: Message = {
       role: "user",
-      content: input,
+      content: messageText,
       timestamp: new Date().toISOString(),
       images: userImages.length > 0 ? userImages : undefined,
     }
 
     setMessages((prev) => [...prev, userMessage])
-    const currentInput = input
     const currentFiles = uploadedFiles
     setInput("")
     setUploadedFiles([])
@@ -241,7 +252,7 @@ export default function ChatbotPage() {
     try {
       // 添加用户名字段到请求数据
       const requestData = {
-        message: currentInput,
+        message: messageText,
         conversation_id: currentConversationId,
         file_ids: currentFiles.map((f) => f.fileId).filter((id) => id),
         username: username, // 添加用户名字段
@@ -267,6 +278,7 @@ export default function ChatbotPage() {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let accumulatedContent = ""
+      let messageId: string | undefined
 
       try {
         while (true) {
@@ -276,7 +288,7 @@ export default function ChatbotPage() {
             break
           }
 
-          const chunk = decoder.decode(value, { stream: true })
+          let chunk = decoder.decode(value, { stream: true })
 
           if (chunk.startsWith("[ERROR]")) {
             setMessages((prev) =>
@@ -293,7 +305,20 @@ export default function ChatbotPage() {
             break
           }
 
-          accumulatedContent += chunk
+          // 检查并提取messageId，但不将其添加到显示内容中
+          if (chunk.includes("[MESSAGE_ID:")) {
+            const match = chunk.match(/\[MESSAGE_ID:([^\]]+)\]/)
+            if (match) {
+              messageId = match[1]
+              // 从chunk中移除MESSAGE_ID标记，避免显示在消息内容中
+              chunk = chunk.replace(/\[MESSAGE_ID:[^\]]+\]/g, "")
+            }
+          }
+
+          // 只有在chunk不为空时才添加到内容中
+          if (chunk.trim()) {
+            accumulatedContent += chunk
+          }
 
           setMessages((prev) =>
             prev.map((msg, index) =>
@@ -302,6 +327,7 @@ export default function ChatbotPage() {
                   ...msg,
                   content: accumulatedContent,
                   isStreaming: true,
+                  messageId: messageId,
                 }
                 : msg,
             ),
@@ -314,6 +340,7 @@ export default function ChatbotPage() {
               ? {
                 ...msg,
                 isStreaming: false,
+                messageId: messageId,
               }
               : msg,
           ),
@@ -382,6 +409,10 @@ export default function ChatbotPage() {
     }
   }
 
+  const sendMessage = async () => {
+    await sendMessageWithText(input)
+  }
+
   const stopGeneration = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -441,7 +472,7 @@ export default function ChatbotPage() {
                 >
                   <Menu className="w-4 h-4" />
                 </Button>
-                <h1 className="text-lg font-semibold">{currentConversationName || "玉米智能问答助手"}</h1>
+                <h1 className="text-lg font-semibold">{currentConversationName || "玉米问答助手"}</h1>
               </div>
               <div className="flex items-center gap-2">
                 {isLoading && (
@@ -466,17 +497,25 @@ export default function ChatbotPage() {
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-yellow-100 to-green-100 p-2">
                       <img
                         src="/images/corn-avatar.jpeg"
-                        alt="玉米智能问答助手"
+                        alt="玉米问答助手"
                         className="w-full h-full object-cover rounded-full"
                       />
                     </div>
-                    <p className="text-lg mb-2 text-gray-700">我是玉米智能问答助手</p>
+                    <p className="text-lg mb-2 text-gray-700">我是玉米问答助手</p>
                     <p className="text-sm text-gray-600">有什么可以帮忙的😀？</p>
                     <p className="text-xs text-gray-400 mt-2">💡 提示：可以直接拖拽图片到窗口中上传</p>
                   </div>
                 ) : (
                   messages.map((message, index) => (
-                    <MessageBubble key={index} message={message} isLoading={message.isStreaming} />
+                    <MessageBubble
+                      key={index}
+                      message={message}
+                      isLoading={message.isStreaming}
+                      username={username}
+                      onQuestionSelect={handleQuestionSelect}
+                      showSuggestions={true}
+                      isLastMessage={index === messages.length - 1}
+                    />
                   ))
                 )}
                 <div ref={messagesEndRef} />
@@ -520,7 +559,7 @@ export default function ChatbotPage() {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyPress={handleKeyPress}
-                      placeholder={isLoading ? "玉米智能问答助手正在回复中... 按Enter停止" : "输入消息..."}
+                      placeholder={isLoading ? "玉米问答助手正在回复中... 按Enter停止" : "输入消息..."}
                       className="pr-20 min-h-[44px] resize-none"
                       disabled={false}
                     />
