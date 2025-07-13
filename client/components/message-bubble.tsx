@@ -81,7 +81,7 @@ export function MessageBubble({
             normalContent = ""
           }
           inThinking = true
-          currentIndex = thinkStartIndex + 10 // '<Thinking>'.length
+          currentIndex = thinkStartIndex + 7 // '<think>'.length
         }
       } else {
         // 当前在思考模式
@@ -96,7 +96,7 @@ export function MessageBubble({
           parts.push({ type: "thinking", content: thinkingContent, isComplete: true })
           thinkingContent = ""
           inThinking = false
-          currentIndex = thinkEndIndex + 11 // '</Thinking>'.length
+          currentIndex = thinkEndIndex + 8 // '</think>'.length
         }
       }
     }
