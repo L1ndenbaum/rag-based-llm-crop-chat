@@ -17,7 +17,7 @@ source ~/.bashrc
 ### npm
 
 ```bash
-cd crop-chat-app/client
+cd client
 npm install
 ```
 
@@ -26,6 +26,7 @@ npm install
 ```bash
 python -m venv your-venv-name
 source your-venv-name/bin/activate
+cd server
 pip install -r requirements.txt
 ```
 
@@ -42,10 +43,12 @@ chmod +x ./build.sh
 ```bash
 chmod +x ./natapp
 ./natapp -authtoken=$natappauthtoken
-cd crop-chat-app/server
+cd server
 python app.py
 ```
 
 ## Natapp内网穿透简单部署
 
 访问[Natapp官网](https://natapp.cn/)
+
+在client/.env.local中，配置你的Natapp Tunnel地址。
