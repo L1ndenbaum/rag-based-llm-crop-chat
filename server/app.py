@@ -8,7 +8,6 @@ from user_control_interface import user_control_interface_bp
 from chat_interface import chat_interface_bp
 from db_config import SQLALCHEMY_DATABASE_URI
 
-STATIC_FOLDER_PATH = "..'/../client/out"
 logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder='./static/out')
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI

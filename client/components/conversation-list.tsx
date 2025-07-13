@@ -54,9 +54,24 @@ export function ConversationList({
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
-  const truncateText = (text: string, maxLength = 30) => {
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength) + "..."
+  const truncateText = (text: string, maxChineseChars = 12) => {
+    let length = 0
+    let truncatedText = ""
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i]
+      // 中文字符计为1个长度，英文字符计为0.5个长度
+      const charLength = /[\u4e00-\u9fa5]/.test(char) ? 1 : 0.5
+
+      if (length + charLength > maxChineseChars) {
+        return truncatedText + "..."
+      }
+
+      truncatedText += char
+      length += charLength
+    }
+
+    return truncatedText
   }
 
   return (
@@ -72,25 +87,27 @@ export function ConversationList({
             <div
               key={conversation.id}
               className={`group relative rounded-lg p-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${currentConversationId === conversation.id
-                ? "bg-blue-50 border border-blue-200 shadow-sm"
-                : "hover:bg-gray-50 hover:shadow-sm"
+                  ? "bg-blue-50 border border-blue-200 shadow-sm"
+                  : "hover:bg-gray-50 hover:shadow-sm"
                 }`}
               onMouseEnter={() => setHoveredId(conversation.id)}
               onMouseLeave={() => setHoveredId(null)}
               onClick={() => onSelectConversation(conversation.id)}
             >
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <span className="text-xs text-gray-500">{formatDate(conversation.updated_at)}</span>
                   </div>
 
-                  <h3 className="text-sm font-medium text-gray-900 truncate mb-1">{truncateText(conversation.name)}</h3>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1 leading-tight">
+                    {truncateText(conversation.name)}
+                  </h3>
 
                   <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>创建: {formatTime(conversation.created_at)}</span>
-                    <span>更新: {formatTime(conversation.updated_at)}</span>
+                    <span className="truncate">创建: {formatTime(conversation.created_at)}</span>
+                    <span className="ml-2 flex-shrink-0">更新: {formatTime(conversation.updated_at)}</span>
                   </div>
                 </div>
 
@@ -98,7 +115,7 @@ export function ConversationList({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 p-1 h-auto ml-2 hover:bg-red-50 active:scale-90"
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-200 p-1 h-auto flex-shrink-0 hover:bg-red-50 active:scale-90"
                     onClick={(e) => {
                       e.stopPropagation()
                       onDeleteConversation(conversation.id)
