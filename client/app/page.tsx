@@ -111,7 +111,7 @@ export default function ChatbotPage() {
             historyMessages.push({
               role: "user",
               content: item.query,
-              timestamp: new Date().toISOString(),
+              timestamp: item.created_at,
               images: userImages.length > 0 ? userImages : undefined,
             })
           }
@@ -121,7 +121,7 @@ export default function ChatbotPage() {
             historyMessages.push({
               role: "assistant",
               content: item.answer,
-              timestamp: new Date().toISOString(),
+              timestamp: item.created_at,
               messageId: item.id, // 添加消息ID
             })
           }
@@ -182,7 +182,7 @@ export default function ChatbotPage() {
       files.forEach((file) => {
         formData.append("files", file)
       })
-
+      formData.append("username", username)
       const response = await fetch(`${API_BASE_URL}/api/file/upload`, {
         method: "POST",
         body: formData,
@@ -281,16 +281,14 @@ export default function ChatbotPage() {
       let messageId: string | undefined
 
       try {
-        while (true) {
+        while (true) 
+        {
           const { done, value } = await reader.read()
-
-          if (done) {
-            break
-          }
+          if (done) { break }
 
           let chunk = decoder.decode(value, { stream: true })
-
-          if (chunk.startsWith("[ERROR]")) {
+          if (chunk.startsWith("[ERROR]")) 
+            {
             setMessages((prev) =>
               prev.map((msg, index) =>
                 index === prev.length - 1

@@ -1,3 +1,3 @@
-from .models import db, Users
+from .models import Base, Users
 
 __all__ = ['Users']

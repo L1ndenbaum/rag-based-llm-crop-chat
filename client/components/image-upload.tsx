@@ -19,7 +19,7 @@ export function ImageUpload({ onUpload, disabled = false }: ImageUploadProps) {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     const imageFiles = files.filter((file) => file.type.startsWith("image/"))
-
+    const username: string = localStorage.getItem("username") as string
     if (imageFiles.length === 0) return
 
     setIsUploading(true)
@@ -30,7 +30,7 @@ export function ImageUpload({ onUpload, disabled = false }: ImageUploadProps) {
       imageFiles.forEach((file) => {
         formData.append("files", file)
       })
-
+      formData.append("username", username)
       const response = await fetch(`${API_BASE_URL}/api/file/upload`, {
         method: "POST",
         body: formData,

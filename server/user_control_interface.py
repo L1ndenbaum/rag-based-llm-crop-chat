@@ -1,74 +1,79 @@
-from flask import jsonify, send_from_directory, request, Blueprint
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
+from fastapi.responses import JSONResponse, FileResponse
+from sqlalchemy.orm import Session
+from models import Users
+from db_config import get_db
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, Users
 import os
 
-user_control_interface_bp = Blueprint('user_control_interface_bp', __name__)
+user_control_router = APIRouter()
 
-@user_control_interface_bp.route('/api/user/register', methods=['POST'])
-def register():
-    username = request.form.get('username')
-    password = request.form.get('password')
-
+# 注册接口
+@user_control_router.post("/api/user/register")
+def register(
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
     if not username or not password:
-        return jsonify({'message': '用户名和密码为必填项'}), 400
+        raise HTTPException(status_code=400, detail="用户名和密码为必填项")
 
-    if Users.query.filter_by(username=username).first():
-        return jsonify({'message': '用户已存在'}), 400
+    existing_user = db.query(Users).filter_by(username=username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="用户已存在")
 
     hashed_password = generate_password_hash(password)
+    new_user = Users(username=username, password=hashed_password)  # type: ignore
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
 
-    new_user = Users(username=username, password=hashed_password) # type: ignore
-    db.session.add(new_user)
-    db.session.commit()
+    return JSONResponse(content={"message": "用户注册成功！"}, status_code=200)
 
-    return jsonify({'message': '用户注册成功！'}), 200
-
-
-@user_control_interface_bp.route('/api/user/login', methods=['POST'])
-def login():
-    """
-    登录检查,接收前端的POST JSON,检查用户信息
-    Returns:
-        用户不存在 -> 返回message JSON和状态码400\n
-        用户存在且密码正确 -> 返回message username JSON和状态码200\n
-        用户存在且密码错误 -> 返回message JSON和状态码401
-    """
-    data = request.get_json()
+# 登录接口
+@user_control_router.post("/api/user/login")
+async def login(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    data = await request.json()
     username = data.get('username')
     password = data.get('password')
 
     if not username or not password:
-        return jsonify({'message': '未提供用户名和密码'}), 400
+        raise HTTPException(status_code=400, detail="未提供用户名和密码")
 
-    user = Users.query.filter_by(username=username).first()
-    if user and check_password_hash(user.password, password):
-        return jsonify({'message': '登录成功'}), 200
+    user = db.query(Users).filter_by(username=username).first()
+    if user and check_password_hash(user.password, password): # type: ignore
+        return JSONResponse(content={"message": "登录成功"}, status_code=200)
     else:
-        return jsonify({'message': '密码错误'}), 401
+        raise HTTPException(status_code=401, detail="密码错误")
 
-@user_control_interface_bp.route('/api/user/user_info/<string:username>', methods=['GET'])
-def get_user_info(username):
-    """
-    查询用户信息接口 不返回密码 仅返回用户名、年龄和头像URL
-    Returs:
-        用户不存在 -> error message JSON和状态码404
-        用户存在 -> 用户信息 JSON 其中的url是一个接口访问地址 对此url发起http请求返回用户头像
-    """
-    user = Users.query.filter_by(username=username).first()
+# 查询用户信息接口
+@user_control_router.get("/api/user/user_info/{username}")
+def get_user_info(username: str, db: Session = Depends(get_db)):
+    user = db.query(Users).filter_by(username=username).first()
     if not user:
-        return jsonify({'message': '用户不存在'}), 404
+        raise HTTPException(status_code=404, detail="用户不存在")
 
-    return jsonify({
-                    'code':200,
-                    'message': '获取用户信息成功',
-                    'data':{'username': user.username}
-                    }), 200
+    return {
+        "code": 200,
+        "message": "获取用户信息成功",
+        "data": {
+            "username": user.username,
+        }
+    }
 
-@user_control_interface_bp.route('/auth/login')
+@user_control_router.get("/auth/login")
 def login_index():
-    return send_from_directory('./static/out/auth', 'login.html')
+    file_path = os.path.join(os.getcwd(), 'static', 'out', 'auth', 'login.html')
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    return FileResponse(file_path, media_type='text/html')
 
-@user_control_interface_bp.route('/auth/register')
+@user_control_router.get("/auth/register")
 def register_index():
-    return send_from_directory('./static/out/auth', 'register.html')
+    file_path = os.path.join(os.getcwd(), 'static', 'out', 'auth', 'register.html')
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="文件不存在")
+    return FileResponse(file_path, media_type='text/html')

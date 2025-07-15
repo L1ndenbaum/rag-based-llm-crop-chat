@@ -1,11 +1,14 @@
-from flask_sqlalchemy import SQLAlchemy
-import datetime, enum
-from sqlalchemy import Enum
-from datetime import datetime, timezone
+from fastapi import FastAPI, Depends
+from sqlalchemy import create_engine, Column, String
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
 
-db = SQLAlchemy()
+Base = declarative_base()
 
-class Users(db.Model):
+class Users(Base):
     __tablename__ = 'users'
-    username = db.Column(db.String(50), primary_key=True)
-    password = db.Column(db.String(255), nullable=False)
+    username = Column(String(50), primary_key=True, index=True)
+    password = Column(String(255), nullable=False)
+
+# # 创建数据库表
+# Base.metadata.create_all(bind=engine)
+

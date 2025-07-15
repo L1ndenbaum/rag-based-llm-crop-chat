@@ -1,43 +1,47 @@
-from flask import Flask, jsonify, send_from_directory
-from flask_cors import CORS
-import logging
-import waitress
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from user_control_interface import user_control_router
+from chat_interface import chat_interface_router
 from datetime import datetime
-from models import db
-from user_control_interface import user_control_interface_bp
-from chat_interface import chat_interface_bp
-from db_config import SQLALCHEMY_DATABASE_URI
+import os, uvicorn, logging
 
-logger = logging.getLogger(__name__)
-app = Flask(__name__, static_folder='./static/out')
-app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.register_blueprint(user_control_interface_bp)
-app.register_blueprint(chat_interface_bp)
-db.init_app(app)
-CORS(app)
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(BASE_DIR, "static", "out")
 
-@app.route('/')
-def serve_index():
-    return send_from_directory('./static/out', 'index.html')
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(user_control_router)
+app.include_router(chat_interface_router)
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
-@app.route('/<path:filename>')
-def serve_static_file(filename):
-    return send_from_directory('./static/out', filename)
+# 健康检查接口
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "service": "chatbot-backend"
+    }
 
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'service': 'chatbot-backend'
-    })
+# 404 异常处理
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    return JSONResponse(status_code=404, content={"error": "接口不存在"})
 
-@app.errorhandler(404)
-def not_found(e): return jsonify({'error': '接口不存在'}), 404
-@app.errorhandler(500)
-def err(e): return jsonify({'error': '服务器内部错误'}), 500
+# 500 异常处理
+@app.exception_handler(500)
+async def internal_error_handler(request: Request, exc):
+    return JSONResponse(status_code=500, content={"error": "服务器内部错误"})
 
-if __name__ == '__main__':
-    waitress.serve(app, host='0.0.0.0', port=8080, threads=16)
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)
