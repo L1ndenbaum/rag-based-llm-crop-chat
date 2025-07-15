@@ -15,14 +15,26 @@ static_dir = os.path.join(BASE_DIR, "static", "out")
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://101.43.131.195:4040/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 app.include_router(user_control_router)
 app.include_router(chat_interface_router)
-app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+@app.get("/{full_path:path}")
+async def serve_html(full_path: str):
+    file_path = os.path.join(static_dir, full_path)
+    if os.path.exists(file_path) and file_path.endswith(".html"):
+        return FileResponse(file_path)
+    else:
+        # fallback to index.html 或返回 404
+        index_path = os.path.join(static_dir, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"error": "Page not found"}
 
 # 健康检查接口
 @app.get("/health")
