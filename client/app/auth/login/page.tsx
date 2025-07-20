@@ -67,7 +67,7 @@ export default function LoginPage() {
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-yellow-100 to-green-100 p-2">
             <img
-              src="/images/corn-avatar.jpeg"
+              src="/subsystem/qa_out/images/corn-avatar.jpeg"
               alt="玉米问答助手"
               className="w-full h-full object-cover rounded-full"
             />

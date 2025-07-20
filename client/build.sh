@@ -1,19 +1,21 @@
 #!/bin/bash
-
-set -e  # 一旦出错就退出
-
+# BuildH得到HTML和资源文件存放在/server/static/out/subsystem/qa_out下
+set -e
 echo "Building project..."
 npm run build
-
+mv out qa_out
 echo "Moving exported static files..."
+TARGET_DIR="../server/static/subsystem/qa_out"
 
-TARGET_DIR="../server/static/out"
-
-# 删除旧的目标目录
 if [ -d "$TARGET_DIR" ]; then
   echo "Removing old static files..."
   rm -rf "$TARGET_DIR"
+  mkdir -p "$TARGET_DIR"
+else
+  echo "Target Folder Do Not Exist, Creating..."
+  mkdir -p "$TARGET_DIR"
 fi
 
-mv out "$TARGET_DIR"
+mv qa_out/* "$TARGET_DIR"
+rmdir qa_out
 echo "Done! Static site is in $TARGET_DIR"

@@ -125,7 +125,7 @@ export function MessageBubble({
         <Avatar className="w-8 h-8 mt-1 ring-2 ring-yellow-100">
           <AvatarFallback className="bg-gradient-to-br from-yellow-100 to-green-100 p-1">
             <img
-              src="/images/corn-avatar.jpeg"
+              src="/subsystem/qa_out/images/corn-avatar.jpeg"
               alt="玉米问答助手"
               className="w-full h-full object-cover rounded-full"
             />

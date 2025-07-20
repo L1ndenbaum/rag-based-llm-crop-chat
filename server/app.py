@@ -10,13 +10,13 @@ import os, uvicorn, logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-static_dir = os.path.join(BASE_DIR, "static", "out")
+static_dir = os.path.join(BASE_DIR, "static")
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://101.43.131.195:4040", "http://gd736e64.natappfree.cc"],
+    allow_origins=["http://101.43.131.195:4040", "http://h4886472.natappfree.cc"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,31 +24,29 @@ app.add_middleware(
 
 app.include_router(user_control_router)
 app.include_router(chat_interface_router)
-app.mount('/_next', StaticFiles(directory=os.path.join(static_dir, '_next')), name='_next')
-app.mount('/images', StaticFiles(directory=os.path.join(static_dir, 'images')), name='images')
 
 @app.get("/")
 async def serve_index():
     return FileResponse(os.path.join(static_dir, "index.html"))
 
-@app.get('/auth/login')
-def serve_login():
-    print(os.path.join(static_dir, 'auth', "login.html"))
-    return FileResponse(os.path.join(static_dir, 'auth', "login.html"))
-@app.get('/auth/login.txt')
-def serve_login_txt():
-    return FileResponse(os.path.join(static_dir, 'auth', "login.txt"))
+# @app.get('/auth/login')
+# def serve_login():
+#     print(os.path.join(static_dir, 'auth', "login.html"))
+#     return FileResponse(os.path.join(static_dir, 'auth', "login.html"))
+# @app.get('/auth/login.txt')
+# def serve_login_txt():
+#     return FileResponse(os.path.join(static_dir, 'auth', "login.txt"))
 
-@app.get('/auth/register')
-def serve_register():
-    return FileResponse(os.path.join(static_dir, 'auth', "register.html"))
-@app.get('/auth/register.txt')
-def serve_register_txt():
-    return FileResponse(os.path.join(static_dir, 'auth', "register.txt"))
+# @app.get('/auth/register')
+# def serve_register():
+#     return FileResponse(os.path.join(static_dir, 'auth', "register.html"))
+# @app.get('/auth/register.txt')
+# def serve_register_txt():
+#     return FileResponse(os.path.join(static_dir, 'auth', "register.txt"))
 
-@app.get("/favicon.ico")
-async def favicon():
-    return FileResponse(os.path.join(static_dir, "favicon.ico"))
+# @app.get("/favicon.ico")
+# async def favicon():
+#     return FileResponse(os.path.join(static_dir, "favicon.ico"))
 
 @app.get("/health")
 async def health():
@@ -57,6 +55,27 @@ async def health():
         "timestamp": datetime.now().isoformat(),
         "service": "chatbot-backend"
     }
+
+
+subsystems = {
+    # subsystem_name : build_path
+    "qa": "qa_out",
+}
+def create_serve_subsystem(path):
+    async def serve():
+        return FileResponse(os.path.join(path, "index.html"))
+    return serve
+
+# 为每个子系统挂载静态资源
+for name, path in subsystems.items():
+    subsystem_path = os.path.join(static_dir, "subsystem", path)
+    if not os.path.isdir(subsystem_path):
+        raise Exception(f"Directory {subsystem_path} does not exist!")
+
+    # /subsystem/out_name -> static_files
+    app.mount(f"/subsystem/{path}", StaticFiles(directory=subsystem_path, html=True), name=f"{name}_all")
+    app.add_api_route(f"/subsystem/{name}", create_serve_subsystem(path), methods=["GET"])
+
 
 # 404 异常处理
 @app.exception_handler(404)
