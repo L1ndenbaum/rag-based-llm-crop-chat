@@ -63,17 +63,3 @@ def get_user_info(username: str, db: Session = Depends(get_db)):
             "username": user.username,
         }
     }
-
-@user_control_router.get("/auth/login")
-def login_index():
-    file_path = os.path.join(os.getcwd(), 'static', 'out', 'auth', 'login.html')
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(file_path, media_type='text/html')
-
-@user_control_router.get("/auth/register")
-def register_index():
-    file_path = os.path.join(os.getcwd(), 'static', 'out', 'auth', 'register.html')
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(file_path, media_type='text/html')

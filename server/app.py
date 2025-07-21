@@ -29,25 +29,6 @@ app.include_router(chat_interface_router)
 async def serve_index():
     return FileResponse(os.path.join(static_dir, "index.html"))
 
-# @app.get('/auth/login')
-# def serve_login():
-#     print(os.path.join(static_dir, 'auth', "login.html"))
-#     return FileResponse(os.path.join(static_dir, 'auth', "login.html"))
-# @app.get('/auth/login.txt')
-# def serve_login_txt():
-#     return FileResponse(os.path.join(static_dir, 'auth', "login.txt"))
-
-# @app.get('/auth/register')
-# def serve_register():
-#     return FileResponse(os.path.join(static_dir, 'auth', "register.html"))
-# @app.get('/auth/register.txt')
-# def serve_register_txt():
-#     return FileResponse(os.path.join(static_dir, 'auth', "register.txt"))
-
-# @app.get("/favicon.ico")
-# async def favicon():
-#     return FileResponse(os.path.join(static_dir, "favicon.ico"))
-
 @app.get("/health")
 async def health():
     return {
