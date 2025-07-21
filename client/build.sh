@@ -13,7 +13,12 @@ TARGET_DIR="../server/static/out"
 if [ -d "$TARGET_DIR" ]; then
   echo "Removing old static files..."
   rm -rf "$TARGET_DIR"
+  mkdir -p "$TARGET_DIR"
+else 
+  echo "Target Dir do not exist, creating..."
+  mkdir -p "$TARGET_DIR"
 fi
 
-mv out "$TARGET_DIR"
+mv out/* "$TARGET_DIR"
+rmdir out
 echo "Done! Static site is in $TARGET_DIR"

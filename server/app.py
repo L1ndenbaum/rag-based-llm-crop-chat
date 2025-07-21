@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 from user_control_interface import user_control_router
 from chat_interface import chat_interface_router
 from datetime import datetime
@@ -27,24 +28,18 @@ app.include_router(chat_interface_router)
 app.mount('/_next', StaticFiles(directory=os.path.join(static_dir, '_next')), name='_next')
 app.mount('/images', StaticFiles(directory=os.path.join(static_dir, 'images')), name='images')
 
+
+def list_routes(app: FastAPI):
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            methods = ','.join(route.methods)
+            print(f"{methods:10} {route.path:30} -> {route.name}")
+
+list_routes(app)
+
 @app.get("/")
 async def serve_index():
     return FileResponse(os.path.join(static_dir, "index.html"))
-
-@app.get('/auth/login')
-def serve_login():
-    print(os.path.join(static_dir, 'auth', "login.html"))
-    return FileResponse(os.path.join(static_dir, 'auth', "login.html"))
-@app.get('/auth/login.txt')
-def serve_login_txt():
-    return FileResponse(os.path.join(static_dir, 'auth', "login.txt"))
-
-@app.get('/auth/register')
-def serve_register():
-    return FileResponse(os.path.join(static_dir, 'auth', "register.html"))
-@app.get('/auth/register.txt')
-def serve_register_txt():
-    return FileResponse(os.path.join(static_dir, 'auth', "register.txt"))
 
 @app.get("/favicon.ico")
 async def favicon():

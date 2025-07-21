@@ -6,6 +6,8 @@ from db_config import get_db
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(BASE_DIR, "static", "out")
 user_control_router = APIRouter()
 
 # 注册接口
@@ -64,16 +66,18 @@ def get_user_info(username: str, db: Session = Depends(get_db)):
         }
     }
 
-@user_control_router.get("/auth/login")
-def login_index():
-    file_path = os.path.join(os.getcwd(), 'static', 'out', 'auth', 'login.html')
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(file_path, media_type='text/html')
+@user_control_router.get('/auth/login')
+async def serve_login():
+    return FileResponse(os.path.join(static_dir, 'auth', "login.html"))
 
-@user_control_router.get("/auth/register")
-def register_index():
-    file_path = os.path.join(os.getcwd(), 'static', 'out', 'auth', 'register.html')
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="文件不存在")
-    return FileResponse(file_path, media_type='text/html')
+@user_control_router.get('/auth/login.txt')
+async def serve_login_txt():
+    return FileResponse(os.path.join(static_dir, 'auth', "login.txt"))
+
+@user_control_router.get('/auth/register')
+async def serve_register():
+    return FileResponse(os.path.join(static_dir, 'auth', "register.html"))
+
+@user_control_router.get('/auth/register.txt')
+async def serve_register_txt():
+    return FileResponse(os.path.join(static_dir, 'auth', "register.txt"))
